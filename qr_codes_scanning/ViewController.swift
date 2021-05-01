@@ -7,6 +7,7 @@
 
 import UIKit
 import AVFoundation
+import Vision
 
 class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDelegate {
     
@@ -17,6 +18,7 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
         return preview
     }()
     private let videoOutput = AVCaptureVideoDataOutput()
+    private let sequenceHandler = VNSequenceRequestHandler()
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -38,8 +40,19 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
             debugPrint("unable to get image from sample buffer")
             return
         }
-        print("did receive image frame")
-        // process image here
+        if let barcode = self.extractQRCode(fromFrame: frame) {
+            print("did extract barcode \(barcode)")
+        }
+    }
+    
+    private func extractQRCode(fromFrame frame: CVImageBuffer) -> String? {
+        let barcodeRequest = VNDetectBarcodesRequest()
+        barcodeRequest.symbologies = [.QR]
+        try? self.sequenceHandler.perform([barcodeRequest], on: frame)
+        guard let results = barcodeRequest.results as? [VNBarcodeObservation], let firstBarcode = results.first?.payloadStringValue else {
+            return nil
+        }
+        return firstBarcode
     }
 
     private func addCameraInput() {
